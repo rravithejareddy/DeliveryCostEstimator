@@ -15,14 +15,11 @@ public sealed class EtaEstimationService : IEtaEstimationService
 
     public Dictionary<string, decimal> EstimateEtas(EtaEstimationRequest request)
     {
-        var packages = request.Packages;
-        var vehicleCount = request.VehicleCount;
-        var speed = request.MaxSpeedKmPerHour;
-        var maxCarriableWeight = request.MaxCarriableWeight;
+        var (packages, vehicleCount, speed, maxCarriableWeight) = request;
 
         var etas = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         var remaining = packages.ToList();
-        var vehicleAvailability = Enumerable.Repeat(0m, vehicleCount).ToList();
+        var vehicleAvailability = new List<decimal>(new decimal[vehicleCount]);
 
         while (remaining.Count > 0)
         {

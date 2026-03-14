@@ -21,12 +21,13 @@ public sealed class DeliveryEstimator : IDeliveryEstimator
 
     public List<DeliveryEstimation> EstimateCostsAndDeliveryTime(DeliveryEstimationRequest request)
     {
-        var packages = request.Eta.Packages;
+        var (baseDeliveryCost, eta) = request;
+        var packages = eta.Packages;
         var costs = packages
-            .Select(p => new { Package = p, Cost = _packageCostService.EstimateCost(request.BaseDeliveryCost, p) })
+            .Select(p => new { Package = p, Cost = _packageCostService.EstimateCost(baseDeliveryCost, p) })
             .ToDictionary(x => x.Package.Id, x => x.Cost, StringComparer.OrdinalIgnoreCase);
 
-        var etaByPackageId = _etaEstimationService.EstimateEtas(request.Eta);
+        var etaByPackageId = _etaEstimationService.EstimateEtas(eta);
 
         return packages
             .Select(p =>

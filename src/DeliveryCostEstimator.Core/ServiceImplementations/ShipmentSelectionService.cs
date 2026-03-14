@@ -6,10 +6,10 @@ public sealed class ShipmentSelectionService : IShipmentSelectionService
 {
     public List<Package> SelectBestShipment(List<Package> remainingPackages, decimal maxCarriableWeight)
     {
-        var candidates = new List<List<Package>>();
-        BuildCandidates(remainingPackages, maxCarriableWeight, 0, new List<Package>(), candidates);
+        var validCombinations = new List<List<Package>>();
+        BuildValidPackageCombinations(remainingPackages, maxCarriableWeight, validCombinations);
 
-        return candidates
+        return validCombinations
             .OrderByDescending(c => c.Count)
             .ThenByDescending(c => c.Sum(p => p.WeightInKg))
             .ThenBy(c => c.Max(p => p.DistanceInKm))
@@ -17,34 +17,54 @@ public sealed class ShipmentSelectionService : IShipmentSelectionService
             .First();
     }
 
-    private static void BuildCandidates(
+    private static void BuildValidPackageCombinations(
         List<Package> allPackages,
         decimal maxCarriableWeight,
-        int index,
-        List<Package> current,
-        List<List<Package>> candidates)
+        List<List<Package>> validCombinations)
     {
-        if (index == allPackages.Count)
+        BuildValidPackageCombinations(allPackages, maxCarriableWeight, 0, 0m, new List<Package>(), validCombinations);
+    }
+
+    private static void BuildValidPackageCombinations(
+        List<Package> allPackages,
+        decimal maxCarriableWeight,
+        int packageIndex,
+        decimal currentWeight,
+        List<Package> currentCombination,
+        List<List<Package>> validCombinations)
+    {
+        if (packageIndex == allPackages.Count)
         {
-            if (current.Count > 0)
+            if (currentCombination.Count > 0)
             {
-                candidates.Add(current.ToList());
+                validCombinations.Add(currentCombination.ToList());
             }
 
             return;
         }
 
-        BuildCandidates(allPackages, maxCarriableWeight, index + 1, current, candidates);
+        BuildValidPackageCombinations(
+            allPackages,
+            maxCarriableWeight,
+            packageIndex + 1,
+            currentWeight,
+            currentCombination,
+            validCombinations);
 
-        var package = allPackages[index];
-        var currentWeight = current.Sum(p => p.WeightInKg);
+        var package = allPackages[packageIndex];
         if (currentWeight + package.WeightInKg > maxCarriableWeight)
         {
             return;
         }
 
-        current.Add(package);
-        BuildCandidates(allPackages, maxCarriableWeight, index + 1, current, candidates);
-        current.RemoveAt(current.Count - 1);
+        currentCombination.Add(package);
+        BuildValidPackageCombinations(
+            allPackages,
+            maxCarriableWeight,
+            packageIndex + 1,
+            currentWeight + package.WeightInKg,
+            currentCombination,
+            validCombinations);
+        currentCombination.RemoveAt(currentCombination.Count - 1);
     }
 }

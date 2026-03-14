@@ -1,0 +1,45 @@
+using DeliveryApp.Core.Models;
+using DeliveryApp.Core.Models.RequestModels;
+
+namespace DeliveryApp.Core.Services;
+
+public sealed class DeliveryEstimator : IDeliveryEstimator
+{
+    private readonly IPackageCostService _packageCostService;
+    private readonly IEtaEstimationService _etaEstimationService;
+
+    public DeliveryEstimator(IPackageCostService packageCostService, IEtaEstimationService etaEstimationService)
+    {
+        _packageCostService = packageCostService;
+        _etaEstimationService = etaEstimationService;
+    }
+
+    public List<CostEstimation> EstimateCosts(decimal baseDeliveryCost, List<Package> packages)
+    {
+        return packages.Select(p => _packageCostService.EstimateCost(baseDeliveryCost, p)).ToList();
+    }
+
+    public List<DeliveryEstimation> EstimateCostsAndDeliveryTime(DeliveryEstimationRequest request)
+    {
+        var packages = request.Eta.Packages;
+        var costs = packages
+            .Select(p => new { Package = p, Cost = _packageCostService.EstimateCost(request.BaseDeliveryCost, p) })
+            .ToDictionary(x => x.Package.Id, x => x.Cost, StringComparer.OrdinalIgnoreCase);
+
+        var etaByPackageId = _etaEstimationService.EstimateEtas(request.Eta);
+
+        return packages
+            .Select(p =>
+            {
+                var cost = costs[p.Id];
+                return new DeliveryEstimation
+                {
+                    PackageId = p.Id,
+                    Discount = cost.Discount,
+                    TotalCost = cost.TotalCost,
+                    EstimatedDeliveryTime = etaByPackageId[p.Id]
+                };
+            })
+            .ToList();
+    }
+}

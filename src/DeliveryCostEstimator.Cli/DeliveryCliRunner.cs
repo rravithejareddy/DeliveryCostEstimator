@@ -18,94 +18,118 @@ public sealed class DeliveryCliRunner
     {
         var isInteractive = !Console.IsInputRedirected;
 
-        try
+        while (true)
         {
-            var inputLines = Console.IsInputRedirected
-                ? ReadFromRedirectedInput()
-                : ReadInteractively();
-
-            if (inputLines.Count == 0)
+            try
             {
-                throw new InvalidOperationException("No input received.");
-            }
+                var inputLines = Console.IsInputRedirected
+                    ? ReadFromRedirectedInput()
+                    : ReadInteractively();
 
-            var header = SplitParts(inputLines[0]);
-            if (header.Length < 2)
-            {
-                throw new InvalidOperationException("First line must be: base_delivery_cost no_of_packages");
-            }
-
-            var baseDeliveryCost = decimal.Parse(header[0], CultureInfo.InvariantCulture);
-            var packageCount = int.Parse(header[1]);
-
-            if (inputLines.Count < packageCount + 1)
-            {
-                throw new InvalidOperationException("Missing package lines.");
-            }
-
-            var packages = new List<Package>(packageCount);
-            for (var i = 1; i <= packageCount; i++)
-            {
-                var parts = SplitParts(inputLines[i]);
-                if (parts.Length < 4)
+                if (inputLines.Count == 0)
                 {
-                    throw new InvalidOperationException($"Package line {i} must be: pkg_id weight distance offer_code");
+                    throw new InvalidOperationException("No input received.");
                 }
 
-                packages.Add(new Package
+                var header = SplitParts(inputLines[0]);
+                if (header.Length < 2)
                 {
-                    Id = parts[0],
-                    WeightInKg = decimal.Parse(parts[1], CultureInfo.InvariantCulture),
-                    DistanceInKm = decimal.Parse(parts[2], CultureInfo.InvariantCulture),
-                    OfferCode = parts[3]
-                });
-            }
+                    throw new InvalidOperationException("First line must be: base_delivery_cost no_of_packages");
+                }
 
-            if (inputLines.Count != packageCount + 2)
-            {
-                throw new InvalidOperationException("Vehicle line is required: no_of_vehicles max_speed max_carriable_weight");
-            }
+                var baseDeliveryCost = decimal.Parse(header[0], CultureInfo.InvariantCulture);
+                var packageCount = int.Parse(header[1]);
 
-            if (isInteractive)
+                if (inputLines.Count < packageCount + 1)
+                {
+                    throw new InvalidOperationException("Missing package lines.");
+                }
+
+                var packages = new List<Package>(packageCount);
+                for (var i = 1; i <= packageCount; i++)
+                {
+                    var parts = SplitParts(inputLines[i]);
+                    if (parts.Length < 4)
+                    {
+                        throw new InvalidOperationException($"Package line {i} must be: pkg_id weight distance offer_code");
+                    }
+
+                    packages.Add(new Package
+                    {
+                        Id = parts[0],
+                        WeightInKg = decimal.Parse(parts[1], CultureInfo.InvariantCulture),
+                        DistanceInKm = decimal.Parse(parts[2], CultureInfo.InvariantCulture),
+                        OfferCode = parts[3]
+                    });
+                }
+
+                if (inputLines.Count != packageCount + 2)
+                {
+                    throw new InvalidOperationException("Vehicle line is required: no_of_vehicles max_speed max_carriable_weight");
+                }
+
+                if (isInteractive)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Output Columns: package_id discount total_cost estimated_delivery_time_hours");
+                }
+
+                var vehicleInfo = SplitParts(inputLines[^1]);
+                if (vehicleInfo.Length < 3)
+                {
+                    throw new InvalidOperationException("Vehicle line must be: no_of_vehicles max_speed max_carriable_weight");
+                }
+
+                var vehicleCount = int.Parse(vehicleInfo[0]);
+                var speed = decimal.Parse(vehicleInfo[1], CultureInfo.InvariantCulture);
+                var maxWeight = decimal.Parse(vehicleInfo[2], CultureInfo.InvariantCulture);
+
+                var request = new DeliveryEstimationRequest(
+                    baseDeliveryCost,
+                    new EtaEstimationRequest(
+                        packages,
+                        vehicleCount,
+                        speed,
+                        maxWeight));
+
+                var result = _estimator.EstimateCostsAndDeliveryTime(request);
+
+                foreach (var item in result)
+                {
+                    Console.WriteLine($"{item.PackageId} {FormatNumber(item.Discount)} {FormatNumber(item.TotalCost)} {FormatNumber(item.EstimatedDeliveryTime)}");
+                }
+
+                break;
+            }
+            catch (Exception ex)
             {
+                Console.WriteLine($"Input error: {ex.Message}");
+
+                if (!isInteractive)
+                {
+                    break;
+                }
+
+                Console.Write("Try again? (y/n): ");
+                var retry = (Console.ReadLine() ?? string.Empty).Trim();
+                if (!retry.Equals("y", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
                 Console.WriteLine();
-                Console.WriteLine("Output Columns: package_id discount total_cost estimated_delivery_time_hours");
             }
-
-            var vehicleInfo = SplitParts(inputLines[^1]);
-            if (vehicleInfo.Length < 3)
-            {
-                throw new InvalidOperationException("Vehicle line must be: no_of_vehicles max_speed max_carriable_weight");
-            }
-
-            var vehicleCount = int.Parse(vehicleInfo[0]);
-            var speed = decimal.Parse(vehicleInfo[1], CultureInfo.InvariantCulture);
-            var maxWeight = decimal.Parse(vehicleInfo[2], CultureInfo.InvariantCulture);
-
-            var request = new DeliveryEstimationRequest(
-                baseDeliveryCost,
-                new EtaEstimationRequest(
-                    packages,
-                    vehicleCount,
-                    speed,
-                    maxWeight));
-
-            var result = _estimator.EstimateCostsAndDeliveryTime(request);
-
-            foreach (var item in result)
-            {
-                Console.WriteLine($"{item.PackageId} {FormatNumber(item.Discount)} {FormatNumber(item.TotalCost)} {FormatNumber(item.EstimatedDeliveryTime)}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Input error: {ex.Message}");
         }
 
         if (isInteractive)
         {
-            Console.WriteLine("Press Enter to exit...");
-            Console.ReadLine();
+            Console.WriteLine();
+            Console.Write("Estimate again? (y/n): ");
+            var again = (Console.ReadLine() ?? string.Empty).Trim();
+            if (again.Equals("y", StringComparison.OrdinalIgnoreCase))
+            {
+                Run();
+            }
         }
     }
 
@@ -143,12 +167,61 @@ public sealed class DeliveryCliRunner
         Console.WriteLine("Enter package lines: pkg_id pkg_weight_in_kg distance_in_km offer_code");
         for (var i = 0; i < packageCount; i++)
         {
-            Console.Write($"Package {i + 1}/{packageCount}: ");
-            lines.Add(ReadRequiredLine());
+            while (true)
+            {
+                Console.Write($"Package {i + 1}/{packageCount}: ");
+                var raw = ReadRequiredLine();
+                var pkgParts = SplitParts(raw);
+                if (pkgParts.Length < 4)
+                {
+                    Console.WriteLine("Invalid format. Expected: pkg_id weight distance offer_code. Please try again.");
+                    continue;
+                }
+
+                if (!decimal.TryParse(pkgParts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out _) ||
+                    !decimal.TryParse(pkgParts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+                {
+                    Console.WriteLine("Weight and distance must be valid numbers. Please try again.");
+                    continue;
+                }
+
+                lines.Add(raw);
+                break;
+            }
         }
 
-        Console.WriteLine("Enter vehicle line: no_of_vehicles max_speed max_carriable_weight");
-        lines.Add(ReadRequiredLine());
+        while (true)
+        {
+            Console.WriteLine("Enter vehicle line: no_of_vehicles max_speed max_carriable_weight");
+            var raw = ReadRequiredLine();
+            var vParts = SplitParts(raw);
+            if (vParts.Length < 3)
+            {
+                Console.WriteLine("Invalid format. Expected: no_of_vehicles max_speed max_carriable_weight. Please try again.");
+                continue;
+            }
+
+            if (!int.TryParse(vParts[0], out var vc) || vc <= 0)
+            {
+                Console.WriteLine("Number of vehicles must be a positive integer. Please try again.");
+                continue;
+            }
+
+            if (!decimal.TryParse(vParts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var sp) || sp <= 0)
+            {
+                Console.WriteLine("Max speed must be a positive number. Please try again.");
+                continue;
+            }
+
+            if (!decimal.TryParse(vParts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out var mw) || mw <= 0)
+            {
+                Console.WriteLine("Max carriable weight must be a positive number. Please try again.");
+                continue;
+            }
+
+            lines.Add(raw);
+            break;
+        }
 
         return lines;
     }

@@ -6,8 +6,25 @@ public sealed class ShipmentSelectionService : IShipmentSelectionService
 {
     public List<Package> SelectBestShipment(List<Package> remainingPackages, decimal maxCarriableWeight)
     {
+        ArgumentNullException.ThrowIfNull(remainingPackages);
+
+        if (maxCarriableWeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxCarriableWeight), "Max carriable weight must be greater than zero.");
+        }
+
+        if (remainingPackages.Count == 0)
+        {
+            return [];
+        }
+
         var validCombinations = new List<List<Package>>();
         BuildValidPackageCombinations(remainingPackages, maxCarriableWeight, validCombinations);
+
+        if (validCombinations.Count == 0)
+        {
+            throw new InvalidOperationException("No valid shipment combination can be created with the provided weight limit.");
+        }
 
         return validCombinations
             .OrderByDescending(c => c.Count)

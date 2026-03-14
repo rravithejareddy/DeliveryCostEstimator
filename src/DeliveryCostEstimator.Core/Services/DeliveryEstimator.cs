@@ -16,8 +16,23 @@ public sealed class DeliveryEstimator : IDeliveryEstimator
 
     public List<DeliveryEstimation> EstimateCostsAndDeliveryTime(DeliveryEstimationRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         var (baseDeliveryCost, eta) = request;
+        if (baseDeliveryCost < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), "Base delivery cost cannot be negative.");
+        }
+
+        ArgumentNullException.ThrowIfNull(eta);
         var packages = eta.Packages;
+        ArgumentNullException.ThrowIfNull(packages);
+
+        if (packages.Count == 0)
+        {
+            return [];
+        }
+
         var costs = packages
             .Select(p => new { Package = p, Cost = _packageCostService.EstimateCost(baseDeliveryCost, p) })
             .ToDictionary(x => x.Package.Id, x => x.Cost, StringComparer.OrdinalIgnoreCase);

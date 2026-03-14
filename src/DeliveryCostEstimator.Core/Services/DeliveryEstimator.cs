@@ -14,11 +14,6 @@ public sealed class DeliveryEstimator : IDeliveryEstimator
         _etaEstimationService = etaEstimationService;
     }
 
-    public List<CostEstimation> EstimateCosts(decimal baseDeliveryCost, List<Package> packages)
-    {
-        return packages.Select(p => _packageCostService.EstimateCost(baseDeliveryCost, p)).ToList();
-    }
-
     public List<DeliveryEstimation> EstimateCostsAndDeliveryTime(DeliveryEstimationRequest request)
     {
         var (baseDeliveryCost, eta) = request;

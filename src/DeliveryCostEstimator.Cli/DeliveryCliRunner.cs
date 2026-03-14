@@ -61,57 +61,40 @@ public sealed class DeliveryCliRunner
                 });
             }
 
-            if (inputLines.Count == packageCount + 2)
+            if (inputLines.Count != packageCount + 2)
             {
-                if (isInteractive)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("Output Columns: package_id discount total_cost estimated_delivery_time_hours");
-                }
-
-                var vehicleInfo = SplitParts(inputLines[^1]);
-                if (vehicleInfo.Length < 3)
-                {
-                    throw new InvalidOperationException("Vehicle line must be: no_of_vehicles max_speed max_carriable_weight");
-                }
-
-                var vehicleCount = int.Parse(vehicleInfo[0]);
-                var speed = decimal.Parse(vehicleInfo[1], CultureInfo.InvariantCulture);
-                var maxWeight = decimal.Parse(vehicleInfo[2], CultureInfo.InvariantCulture);
-
-                var request = new DeliveryEstimationRequest
-                {
-                    BaseDeliveryCost = baseDeliveryCost,
-                    Eta = new EtaEstimationRequest
-                    {
-                        Packages = packages,
-                        VehicleCount = vehicleCount,
-                        MaxSpeedKmPerHour = speed,
-                        MaxCarriableWeight = maxWeight
-                    }
-                };
-
-                var result = _estimator.EstimateCostsAndDeliveryTime(request);
-
-                foreach (var item in result)
-                {
-                    Console.WriteLine($"{item.PackageId} {FormatNumber(item.Discount)} {FormatNumber(item.TotalCost)} {FormatNumber(item.EstimatedDeliveryTime)}");
-                }
+                throw new InvalidOperationException("Vehicle line is required: no_of_vehicles max_speed max_carriable_weight");
             }
-            else
+
+            if (isInteractive)
             {
-                if (isInteractive)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("Output Columns: package_id discount total_cost");
-                }
+                Console.WriteLine();
+                Console.WriteLine("Output Columns: package_id discount total_cost estimated_delivery_time_hours");
+            }
 
-                var result = _estimator.EstimateCosts(baseDeliveryCost, packages);
+            var vehicleInfo = SplitParts(inputLines[^1]);
+            if (vehicleInfo.Length < 3)
+            {
+                throw new InvalidOperationException("Vehicle line must be: no_of_vehicles max_speed max_carriable_weight");
+            }
 
-                foreach (var item in result)
-                {
-                    Console.WriteLine($"{item.PackageId} {FormatNumber(item.Discount)} {FormatNumber(item.TotalCost)}");
-                }
+            var vehicleCount = int.Parse(vehicleInfo[0]);
+            var speed = decimal.Parse(vehicleInfo[1], CultureInfo.InvariantCulture);
+            var maxWeight = decimal.Parse(vehicleInfo[2], CultureInfo.InvariantCulture);
+
+            var request = new DeliveryEstimationRequest(
+                baseDeliveryCost,
+                new EtaEstimationRequest(
+                    packages,
+                    vehicleCount,
+                    speed,
+                    maxWeight));
+
+            var result = _estimator.EstimateCostsAndDeliveryTime(request);
+
+            foreach (var item in result)
+            {
+                Console.WriteLine($"{item.PackageId} {FormatNumber(item.Discount)} {FormatNumber(item.TotalCost)} {FormatNumber(item.EstimatedDeliveryTime)}");
             }
         }
         catch (Exception ex)
@@ -164,13 +147,8 @@ public sealed class DeliveryCliRunner
             lines.Add(ReadRequiredLine());
         }
 
-        Console.Write("Calculate ETA as well? (y/n): ");
-        var includeEta = (Console.ReadLine() ?? string.Empty).Trim();
-        if (includeEta.Equals("y", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine("Enter vehicle line: no_of_vehicles max_speed max_carriable_weight");
-            lines.Add(ReadRequiredLine());
-        }
+        Console.WriteLine("Enter vehicle line: no_of_vehicles max_speed max_carriable_weight");
+        lines.Add(ReadRequiredLine());
 
         return lines;
     }

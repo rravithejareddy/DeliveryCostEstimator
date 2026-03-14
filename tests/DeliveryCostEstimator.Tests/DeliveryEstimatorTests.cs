@@ -32,7 +32,7 @@ public class DeliveryEstimatorTests
     ];
 
     [Fact]
-    public void CostEstimation_MatchesSampleInput1()
+    public void CostAndEtaEstimation_MatchesSampleInput1()
     {
         var estimator = CreateEstimator();
 
@@ -43,7 +43,15 @@ public class DeliveryEstimatorTests
             new Package { Id = "PKG3", WeightInKg = 10m, DistanceInKm = 100m, OfferCode = "OFR003" }
         };
 
-        var result = estimator.EstimateCosts(baseDeliveryCost: 100m, packages);
+        var request = new DeliveryEstimationRequest(
+            100m,
+            new EtaEstimationRequest(
+                packages,
+                1,
+                100m,
+                200m));
+
+        var result = estimator.EstimateCostsAndDeliveryTime(request);
 
         Assert.Collection(result,
             item =>
@@ -51,18 +59,21 @@ public class DeliveryEstimatorTests
                 Assert.Equal("PKG1", item.PackageId);
                 Assert.Equal(0m, item.Discount);
                 Assert.Equal(175m, item.TotalCost);
+                Assert.Equal(0.05m, item.EstimatedDeliveryTime);
             },
             item =>
             {
                 Assert.Equal("PKG2", item.PackageId);
                 Assert.Equal(0m, item.Discount);
                 Assert.Equal(275m, item.TotalCost);
+                Assert.Equal(0.05m, item.EstimatedDeliveryTime);
             },
             item =>
             {
                 Assert.Equal("PKG3", item.PackageId);
                 Assert.Equal(35m, item.Discount);
                 Assert.Equal(665m, item.TotalCost);
+                Assert.Equal(1m, item.EstimatedDeliveryTime);
             });
     }
 
@@ -80,17 +91,13 @@ public class DeliveryEstimatorTests
             new Package { Id = "PKG5", WeightInKg = 155m, DistanceInKm = 95m, OfferCode = "NA" }
         };
 
-        var request = new DeliveryEstimationRequest
-        {
-            BaseDeliveryCost = 100m,
-            Eta = new EtaEstimationRequest
-            {
-                Packages = packages,
-                VehicleCount = 2,
-                MaxSpeedKmPerHour = 70m,
-                MaxCarriableWeight = 200m
-            }
-        };
+        var request = new DeliveryEstimationRequest(
+            100m,
+            new EtaEstimationRequest(
+                packages,
+                2,
+                70m,
+                200m));
 
         var result = estimator.EstimateCostsAndDeliveryTime(request);
 

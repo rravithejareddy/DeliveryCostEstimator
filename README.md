@@ -10,7 +10,7 @@ Simple .NET console app to calculate:
 1. Reads package input and base delivery cost.
 2. Applies offer rules to calculate discount.
 3. Calculates total cost per package.
-4. Optionally calculates ETA based on:
+4. Calculates ETA for each package based on:
 - number of vehicles
 - vehicle speed
 - max carriable weight
@@ -92,3 +92,19 @@ PKG4 110 60 OFR002
 PKG5 155 95 NA
 2 70 200
 ```
+
+## Output Format
+
+The CLI always prints one line per package in this format:
+
+```text
+PKG1 0 750 3.98
+PKG2 0 1475 1.78
+PKG3 0 2350 1.42
+```
+
+Columns:
+- `package_id`
+- `discount`
+- `total_cost`
+- `estimated_delivery_time_hours`

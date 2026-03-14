@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/DeliveryApp.Cli/DeliveryApp.Cli.csproj" />
-    <Project Path="src/DeliveryApp.Core/DeliveryApp.Core.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/DeliveryApp.Tests/DeliveryApp.Tests.csproj" />
-  </Folder>
-</Solution>

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DeliveryCostEstimator.Cli/DeliveryCostEstimator.Cli.csproj" />
+    <Project Path="src/DeliveryCostEstimator.Core/DeliveryCostEstimator.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DeliveryCostEstimator.Tests/DeliveryCostEstimator.Tests.csproj" />
+  </Folder>
+</Solution>
